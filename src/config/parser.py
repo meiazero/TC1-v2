@@ -1,4 +1,7 @@
-import yaml
+try:
+    import yaml
+except ImportError:
+    yaml = None
 import itertools
 
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, SGDRegressor
@@ -34,6 +37,11 @@ if HAS_XGB:
 
 
 def load_model_configs(path: str):
+    if yaml is None:
+        raise ImportError(
+            "PyYAML is required to load model configurations. "
+            "Install it via pip install pyyaml"
+        )
     with open(path, "r") as f:
         config = yaml.safe_load(f)
 
