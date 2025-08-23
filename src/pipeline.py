@@ -13,6 +13,17 @@ from plots.scatter import plot_actual_vs_predicted
 from plots.residuals import plot_residuals
 from plots.diagnostics import plot_qq
 
+def _slugify_params(params: dict) -> str:
+    """Create a filesystem-safe slug from parameter dict."""
+    items = sorted(params.items())
+    parts = []
+    for k, v in items:
+        s = str(v)
+        for ch in [' ', '[', ']', ',', '(', ')', '\'', '"']:
+            s = s.replace(ch, '')
+        parts.append(f"{k}-{s}")
+    return '__'.join(parts) if parts else 'default'
+
 def run_pipeline(
     config_path: str,
     data_path: str,
@@ -60,6 +71,10 @@ def run_pipeline(
         logger.info("Training model %s with params %s", name, params)
         res = train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test)
         results.append(res)
+        # prepare parameter identifiers for filenames and titles
+        param_slug = _slugify_params(params)
+        param_str = ", ".join([f"{k}={v}" for k, v in sorted(params.items())]) if params else "default"
+
         # generate diagnostic plots for train and test sets, organized by model
         model_plots_dir = os.path.join(plots_dir, name)
         make_dir(model_plots_dir)
@@ -71,37 +86,42 @@ def run_pipeline(
                 residuals = data.get("residuals")
                 if y_true is None or y_pred is None or residuals is None:
                     continue
-                # Actual vs Predicted scatter with R2 and trend line
+                # Actual vs Predicted scatter with R2, trend line, and param info
                 fig, ax = plot_actual_vs_predicted(
                     y_true, y_pred,
                     model_name=name,
                     split_name=split_name
                 )
+                fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{split_name}_actual_vs_predicted.png"
+                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png"
                 ))
                 plt.close(fig)
-                # Residuals histogram with normal overlay
+
+                # Residuals histogram with normal overlay and param info
                 fig, ax = plot_residuals(
                     y_true, y_pred,
                     model_name=name,
                     split_name=split_name
                 )
+                fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{split_name}_residuals_histogram.png"
+                    f"{idx}_{param_slug}_{split_name}_residuals_histogram.png"
                 ))
                 plt.close(fig)
-                # QQ-Plot of residuals
+
+                # QQ-Plot of residuals with param info
                 fig, ax = plot_qq(
                     residuals,
                     model_name=name,
                     split_name=split_name
                 )
+                fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{split_name}_qqplot.png"
+                    f"{idx}_{param_slug}_{split_name}_qqplot.png"
                 ))
                 plt.close(fig)
             except Exception as e:
