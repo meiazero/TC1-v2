@@ -6,7 +6,12 @@ from sklearn.metrics import (
     median_absolute_error,
     mean_absolute_percentage_error
 )
+import warnings
 from scipy.stats import pearsonr, spearmanr, skew, kurtosis
+try:
+    from scipy.stats import ConstantInputWarning
+except ImportError:
+    ConstantInputWarning = Warning
 from sklearn.model_selection import cross_validate, RepeatedKFold
 
 # Optional import for XGBoost early stopping support
@@ -101,13 +106,17 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
 
             r2 = r2_score(y_true, y_pred)
 
-            # Correlações
+            # Correlações com supressão de ConstantInputWarning
             try:
-                pearson, _ = pearsonr(y_true, y_pred)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=ConstantInputWarning)
+                    pearson, _ = pearsonr(y_true, y_pred)
             except Exception:
                 pearson = np.nan
             try:
-                spearman, _ = spearmanr(y_true, y_pred)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=ConstantInputWarning)
+                    spearman, _ = spearmanr(y_true, y_pred)
             except Exception:
                 spearman = np.nan
 
