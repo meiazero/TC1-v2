@@ -66,20 +66,14 @@ models:
   - name: DecisionTreeRegressor
     mode: grid
     params:
-      max_depth: [3, 5, 10, None]
+      max_depth: [3, 5, 10]
       min_samples_split: [2, 5]
 
   - name: RandomForestRegressor
-    mode: sequential
-    configs:
-      - n_estimators: 100
-        max_depth: None
-
-      - n_estimators: 200
-        max_depth: 10
-
-      - n_estimators: 300
-        max_depth: 20
+    mode: grid
+    params:
+      n_estimators: [100, 200, 300]
+      max_depth: [10, 20, 30]
 
   - name: GradientBoostingRegressor
     mode: sequential
