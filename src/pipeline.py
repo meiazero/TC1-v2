@@ -3,7 +3,7 @@ from datetime import datetime
 
 from config.parser import load_model_configs
 from data.loader import load_raw_data, clean_data
-from data.preprocess import preprocess, split_data
+from data.preprocess import preprocess, split_data, remove_outliers as remove_outliers_fn
 from training.trainer import train_and_evaluate
 from training.evaluation import results_to_dataframe, select_best_model
 from utils.io import make_dir, save_dataframe, save_model
@@ -32,7 +32,8 @@ def run_pipeline(
     data_path: str,
     output_dir: str,
     test_size: float = 0.2,
-    random_state: int = 42
+    random_state: int = 42,
+    remove_outliers: bool = False
 ):
     logger = get_logger(__name__)
     logger.info("Starting pipeline")
@@ -50,7 +51,12 @@ def run_pipeline(
     logger.info("Loading raw data from %s", data_path)
     df_raw = load_raw_data(data_path)
     df = clean_data(df_raw)
+
     logger.info("Loaded data with %d records after cleaning", len(df))
+    if remove_outliers:
+        logger.info("Removing outliers from data")
+        df = remove_outliers_fn(df)
+        logger.info("Data shape after outlier removal: %d records", len(df))
 
     # Preprocess data
     logger.info("Preprocessing data")
@@ -219,30 +225,3 @@ def run_pipeline(
 
     logger.info("Pipeline finished. Outputs are in %s", run_dir)
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Run ML pipeline for real estate dataset")
-    parser.add_argument(
-        "--config", default="src/config/models.yml", help="Path to model config file"
-    )
-    parser.add_argument(
-        "--data", default="data/raw/real-estate-valuation-dataset.csv", help="Path to raw data CSV"
-    )
-    parser.add_argument(
-        "--output", default="experiments", help="Directory to store experiment outputs"
-    )
-    parser.add_argument(
-        "--test-size", type=float, default=0.2, help="Test set proportion"
-    )
-    parser.add_argument(
-        "--random-state", type=int, default=42, help="Random state for reproducibility"
-    )
-    args = parser.parse_args()
-    run_pipeline(
-        config_path=args.config,
-        data_path=args.data,
-        output_dir=args.output,
-        test_size=args.test_size,
-        random_state=args.random_state
-    )
