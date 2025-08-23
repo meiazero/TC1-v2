@@ -57,10 +57,10 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
                 spearman = np.nan
 
             # Estatísticas de resíduos
-            res_mean = np.mean(residuals)
-            res_var = np.var(residuals)
-            res_skew = skew(residuals)
-            res_kurt = kurtosis(residuals)
+            res_mean = np.mean(residuals) # mean
+            res_var = np.var(residuals) # variance
+            res_skew = skew(residuals) # skewness
+            res_kurt = kurtosis(residuals) # kurtosis
 
             results[split] = {
                 "r2": r2,
