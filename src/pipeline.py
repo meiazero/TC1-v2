@@ -8,6 +8,10 @@ from training.trainer import train_and_evaluate
 from training.evaluation import results_to_dataframe, select_best_model
 from utils.io import make_dir, save_dataframe, save_model
 from utils.logging import get_logger
+import matplotlib.pyplot as plt
+from plots.scatter import plot_actual_vs_predicted
+from plots.residuals import plot_residuals
+from plots.diagnostics import plot_qq
 
 def run_pipeline(
     config_path: str,
@@ -24,6 +28,9 @@ def run_pipeline(
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = os.path.join(output_dir, timestamp)
     make_dir(run_dir)
+    # prepare directory for plots
+    plots_dir = os.path.join(run_dir, "plots")
+    make_dir(plots_dir)
 
     # Load and clean data
     logger.info("Loading raw data from %s", data_path)
@@ -44,15 +51,64 @@ def run_pipeline(
     logger.info("Loading model configurations from %s", config_path)
     experiments = load_model_configs(config_path)
 
-    # Train and evaluate models
+    # Train, evaluate and plot results for each model
     results = []
-    for exp in experiments:
+    for idx, exp in enumerate(experiments):
         name = exp["name"]
         params = exp["params"]
         model = exp["model"]
         logger.info("Training model %s with params %s", name, params)
         res = train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test)
         results.append(res)
+        # generate diagnostic plots for train and test sets, organized by model
+        model_plots_dir = os.path.join(plots_dir, name)
+        make_dir(model_plots_dir)
+        for split_name in ("train", "test"):
+            try:
+                data = res.get(split_name, {})
+                y_true = data.get("y_true")
+                y_pred = data.get("y_pred")
+                residuals = data.get("residuals")
+                if y_true is None or y_pred is None or residuals is None:
+                    continue
+                # Actual vs Predicted scatter with R2 and trend line
+                fig, ax = plot_actual_vs_predicted(
+                    y_true, y_pred,
+                    model_name=name,
+                    split_name=split_name
+                )
+                fig.savefig(os.path.join(
+                    model_plots_dir,
+                    f"{idx}_{split_name}_actual_vs_predicted.png"
+                ))
+                plt.close(fig)
+                # Residuals histogram with normal overlay
+                fig, ax = plot_residuals(
+                    y_true, y_pred,
+                    model_name=name,
+                    split_name=split_name
+                )
+                fig.savefig(os.path.join(
+                    model_plots_dir,
+                    f"{idx}_{split_name}_residuals_histogram.png"
+                ))
+                plt.close(fig)
+                # QQ-Plot of residuals
+                fig, ax = plot_qq(
+                    residuals,
+                    model_name=name,
+                    split_name=split_name
+                )
+                fig.savefig(os.path.join(
+                    model_plots_dir,
+                    f"{idx}_{split_name}_qqplot.png"
+                ))
+                plt.close(fig)
+            except Exception as e:
+                logger.warning(
+                    "Could not generate %s plots for %s: %s",
+                    split_name, name, e
+                )
 
     # Consolidate results
     df_results = results_to_dataframe(results)
