@@ -3,20 +3,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.lines as mlines
 
-# pretty name mapping for metrics
+# pretty name mapping for base metrics
 _PRETTY_NAMES = {
-    "mae_test": "MAE",
-    "mape_test": "MAPE",
-    "mse_test": "MSE",
-    "medae_test": "MedAE",
-    "pearson_test": "Pearson",
-    "r2_test": "R2",
-    "res_mean_test": "Residual Mean",
-    "res_var_test": "Residual Variance",
-    "res_skew_test": "Residual Skewness",
-    "res_kurt_test": "Residual Kurtosis",
-    "rmse_test": "RMSE",
-    "spearman_test": "Spearman"
+    "mae": "MAE",
+    "mape": "MAPE",
+    "mse": "MSE",
+    "medae": "MedAE",
+    "pearson": "Pearson",
+    "r2": "R2",
+    "res_mean": "Residual Mean",
+    "res_var": "Residual Variance",
+    "res_skew": "Residual Skewness",
+    "res_kurt": "Residual Kurtosis",
+    "rmse": "RMSE",
+    "spearman": "Spearman"
 }
 
 
@@ -24,18 +24,41 @@ def plot_summary_boxplots(df, output_dir, metrics=None, model_col='model'):
     """
     For each metric in `metrics`, plot a boxplot grouping values by model and
     save the PNGs to `output_dir`.
-    If metrics is None, selects all numeric columns ending with '_test'.
+    If metrics is None, selects all numeric columns ending with '_train' or '_test'.
     """
     # determine which metrics to plot
     if metrics is None:
-        # select all numeric test metrics
-        metrics = [c for c in df.columns if c.endswith('_test')
-                   and np.issubdtype(df[c].dtype, np.number)]
+        # select all numeric test and train metrics
+        metrics = [
+            c for c in df.columns
+            if (c.endswith('_test') or c.endswith('_train'))
+               and np.issubdtype(df[c].dtype, np.number)
+        ]
 
     for metric in metrics:
-        # get display name for metric
-        default_name = metric.replace('_', ' ').title()
-        display_name = _PRETTY_NAMES.get(metric, default_name)
+        # determine display name using pretty mapping and suffix
+        if metric in _PRETTY_NAMES:
+            display_name = _PRETTY_NAMES[metric]
+        else:
+            display_name = None
+            # check for train/test suffix
+            if metric.endswith('_train'):
+                suffix = 'Train'
+                base = metric[:-6]
+            elif metric.endswith('_test'):
+                suffix = 'Test'
+                base = metric[:-5]
+            else:
+                suffix = None
+                base = None
+
+            # if base metric has pretty name, append suffix
+            if suffix and base in _PRETTY_NAMES:
+                display_name = f"{_PRETTY_NAMES[base]} ({suffix})"
+
+            # fallback to default formatting
+            if display_name is None:
+                display_name = metric.replace('_', ' ').title()
 
         groups = []
         labels = []
@@ -52,10 +75,12 @@ def plot_summary_boxplots(df, output_dir, metrics=None, model_col='model'):
         # boxplot with means
         meanprops = {'marker': 'd', 'markerfacecolor': 'orange'}
         ax.boxplot(groups, labels=labels, showmeans=True, meanprops=meanprops)
+
         # titles and labels
         ax.set_title(f"{display_name} by Model")
         ax.set_xlabel("Model")
         ax.set_ylabel(str(display_name))
+
         # legend for mean marker
         mean_handle = mlines.Line2D([], [], color='orange', marker='d', linestyle='None',
                                     markersize=6, label='Mean')
