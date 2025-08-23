@@ -19,7 +19,12 @@ def main():
         "--random-state", type=int, default=42, help="Random seed"
     )
     parser.add_argument(
-        "--remove-outliers", action="store_true", default=False, help="Remove outliers from data before processing"
+        "--remove-outliers", action="store_true", default=False,
+        help="Remove outliers from data before processing"
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=10,
+        help="Number of training repeats per model (to select best run)"
     )
 
     args = parser.parse_args()
@@ -29,7 +34,8 @@ def main():
         output_dir=args.output,
         test_size=args.test_size,
         random_state=args.random_state,
-        remove_outliers=args.remove_outliers
+        remove_outliers=args.remove_outliers,
+        epochs=args.epochs
     )
 
 if __name__ == "__main__":
