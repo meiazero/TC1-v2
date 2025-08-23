@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 from plots.scatter import plot_actual_vs_predicted
 from utils.statistics import significance_test
 from plots.residuals import plot_residuals
-from plots.diagnostics import plot_qq
 from plots.learning_curve import plot_learning_curve
 
 def _slugify_params(params: dict) -> str:
@@ -84,6 +83,7 @@ def run_pipeline(
         model = exp["model"]
         logger.info("Training model %s with params %s", name, params)
         best_res = None
+
         # Repeat training to select best run
         for epoch in range(epochs):
             logger.info("Run %d/%d for %s", epoch + 1, epochs, name)
@@ -96,67 +96,10 @@ def run_pipeline(
         if best_res is None:
             logger.warning("All runs failed for %s, skipping", name)
             continue
+
         # Append only the best result for this model config
         results.append(best_res)
         res = best_res
-        # prepare parameter identifiers
-        param_slug = _slugify_params(params)
-        param_str = ", ".join([f"{k}={v}" for k, v in sorted(params.items())]) if params else "default"
-        model_plots_dir = os.path.join(plots_dir, name)
-        make_dir(model_plots_dir)
-        # Diagnostic plots for train/test
-        for split_name in ("train", "test"):
-            data = res.get(split_name, {})
-            y_true = data.get("y_true")
-            y_pred = data.get("y_pred")
-            residuals = data.get("residuals")
-            if y_true is None or y_pred is None or residuals is None:
-                continue
-            try:
-                fig, ax = plot_actual_vs_predicted(
-                    y_true, y_pred, model_name=name, split_name=split_name
-                )
-                fig.supxlabel(f"Params: {param_str}", fontsize=8)
-                fig.savefig(
-                    os.path.join(model_plots_dir, f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png"), dpi=300
-                )
-                plt.close(fig)
-            except Exception as e:
-                logger.warning("Could not generate %s actual_vs_predicted for %s: %s", split_name, name, e)
-            try:
-                fig, ax = plot_residuals(
-                    y_true, y_pred, model_name=name, split_name=split_name
-                )
-                fig.suptitle(f"Params: {param_str}", fontsize=8)
-                fig.savefig(
-                    os.path.join(model_plots_dir, f"{idx}_{param_slug}_{split_name}_residuals_histogram.png"), dpi=300
-                )
-                plt.close(fig)
-            except Exception as e:
-                logger.warning("Could not generate %s residuals_histogram for %s: %s", split_name, name, e)
-            # try:
-            #     fig, ax = plot_qq(
-            #         residuals, model_name=name, split_name=split_name
-            #     )
-            #     fig.suptitle(f"Params: {param_str}", fontsize=8)
-            #     fig.savefig(
-            #         os.path.join(model_plots_dir, f"{idx}_{param_slug}_{split_name}_qqplot.png"), dpi=300
-            #     )
-            #     plt.close(fig)
-            # except Exception as e:
-            #     logger.warning("Could not generate %s qqplot for %s: %s", split_name, name, e)
-        # Learning curve for best run
-        try:
-            fig = plot_learning_curve(
-                model, X_train, y_train, title=f"{name} Learning Curve", cv=5, n_jobs=-1
-            )
-            fig.suptitle(f"Params: {param_str}", fontsize=8)
-            fig.savefig(
-                os.path.join(model_plots_dir, f"{idx}_{param_slug}_learning_curve.png"), dpi=300
-            )
-            plt.close(fig)
-        except Exception as e:
-            logger.warning("Could not generate learning curve for %s: %s", name, e)
 
     # Consolidate results and sort by test R2 descending
     df_results = results_to_dataframe(results)
@@ -170,15 +113,15 @@ def run_pipeline(
     try:
         # Select best experiment per model based on highest test R2
         best_configs = df_results.loc[df_results.groupby('model')['r2_test'].idxmax()].copy()
-        # Extract key metrics and performance variance (CV std)
+        # Extract key metrics and residual variance (errors variability)
         model_rank = best_configs[[
             'model', 'r2_train', 'r2_test', 'rmse_train', 'rmse_test',
-            'r2_cv_train_std', 'r2_cv_test_std'
+            'res_var_train', 'res_var_test'
         ]]
-        # Rename CV variance columns
+        # Rename residual variance columns
         model_rank = model_rank.rename(columns={
-            'r2_cv_train_std': 'variance_train',
-            'r2_cv_test_std': 'variance_test'
+            'res_var_train': 'variance_train',
+            'res_var_test': 'variance_test'
         })
         # Sort by test R2 descending
         model_rank = model_rank.sort_values(by='r2_test', ascending=False).reset_index(drop=True)
@@ -251,6 +194,63 @@ def run_pipeline(
         logger.info("Saved summary boxplots to %s", summary_dir)
     except Exception as e:
         logger.warning("Could not generate summary boxplots: %s", e)
+
+    # Plot only the best overall model's diagnostics
+    try:
+        # Identify best experiment by highest test R2
+        best_idx, best_res = max(
+            enumerate(results), key=lambda x: x[1].get('test', {}).get('r2', float('-inf'))
+        )
+
+        best_exp = experiments[best_idx]
+        name = best_res['model']
+        params = best_res.get('params', {}) or {}
+        model = best_exp['model']
+        # Prepare identifiers
+        slug = _slugify_params(params)
+        param_str = ", ".join([f"{k}={v}" for k, v in sorted(params.items())]) if params else "default"
+        # Directory for best model plots
+        best_plots_dir = os.path.join(plots_dir, 'best_model')
+        make_dir(best_plots_dir)
+        # Actual vs Predicted (test)
+        data = best_res.get('test', {})
+        y_true = data.get('y_true')
+        y_pred = data.get('y_pred')
+
+        if y_true is not None and y_pred is not None:
+            fig, ax = plot_actual_vs_predicted(
+                y_true, y_pred, model_name=name, split_name='test'
+            )
+            fig.supxlabel(f"Params: {param_str}", fontsize=8)
+            fig.savefig(
+                os.path.join(best_plots_dir, f"best_{name}_{slug}_test_actual_vs_predicted.png"), dpi=300
+            )
+            plt.close(fig)
+        # Residuals histogram (test)
+        if y_true is not None and y_pred is not None:
+            fig, ax = plot_residuals(
+                y_true, y_pred, model_name=name, split_name='test'
+            )
+            fig.supxlabel(f"Params: {param_str}", fontsize=8)
+            fig.savefig(
+                os.path.join(best_plots_dir, f"best_{name}_{slug}_test_residuals_histogram.png"), dpi=300
+            )
+            plt.close(fig)
+        # Learning curve (train)
+        try:
+            fig = plot_learning_curve(
+                model, X_train, y_train, title=f"{name} Learning Curve", cv=5, n_jobs=-1
+            )
+            fig.suptitle(f"Params: {param_str}" , fontsize=8)
+            fig.savefig(
+                os.path.join(best_plots_dir, f"best_{name}_{slug}_learning_curve.png"), dpi=300
+            )
+            plt.close(fig)
+        except Exception as e:
+            logger.warning("Could not generate learning curve for best model %s: %s", name, e)
+        logger.info("Saved plots for best overall model to %s", best_plots_dir)
+    except Exception as e:
+        logger.warning("Could not generate plots for best overall model: %s", e)
 
     # Select and save best MLPRegressor configuration (compare only 1 vs 2 hidden layers)
     mlp_df = df_results[df_results['model'] == 'MLPRegressor']
