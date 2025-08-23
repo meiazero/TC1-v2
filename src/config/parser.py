@@ -59,8 +59,18 @@ def load_model_configs(path: str):
             experiments.append({"name": name, "params": params, "model": model})
 
         elif mode == "grid":
-            params = model_cfg.get("params", {})
-            keys, values = zip(*params.items()) if params else ([], [])
+            params = model_cfg.get("params", {}) or {}
+            # ensure each param value is iterable for grid combinations
+            items = []
+            for key, val in params.items():
+                if isinstance(val, (list, tuple)):
+                    items.append((key, val))
+                else:
+                    items.append((key, [val]))
+            if items:
+                keys, values = zip(*items)
+            else:
+                keys, values = ([], [])
             for combination in itertools.product(*values):
                 param_dict = dict(zip(keys, combination))
                 model = MODEL_REGISTRY[name](**param_dict)
@@ -75,10 +85,3 @@ def load_model_configs(path: str):
             raise ValueError(f"Modo desconhecido: {mode}")
 
     return experiments
-
-
-# Exemplo de uso
-if __name__ == "__main__":
-    experiments = load_model_configs("config/models.yml")
-    for exp in experiments[:5]:  # só para mostrar alguns
-        print(exp["name"], exp["params"], type(exp["model"]))
