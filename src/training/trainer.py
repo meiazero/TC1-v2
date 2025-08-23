@@ -7,7 +7,7 @@ from sklearn.metrics import (
     mean_absolute_percentage_error
 )
 from scipy.stats import pearsonr, spearmanr, skew, kurtosis
-from sklearn.model_selection import cross_validate
+from sklearn.model_selection import cross_validate, RepeatedKFold
 
 
 def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
@@ -19,20 +19,28 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
     }
 
     try:
-        # --- Cross-validation for R2 scores ---
+        # --- Repeated K-Fold cross-validation for R2 and RMSE ---
         try:
-            # Evaluate cross-validated R2 on training data
+            rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+            scoring = {'r2': 'r2', 'rmse': 'neg_root_mean_squared_error'}
             cv_results = cross_validate(
                 model, X_train, y_train,
-                cv=5, return_train_score=True, scoring='r2'
+                cv=rkf, scoring=scoring, return_train_score=True
             )
-            train_scores = cv_results.get('train_score', [])
-            test_scores = cv_results.get('test_score', [])
+            # Extract and invert negative RMSE scores
+            r2_train = cv_results.get('train_r2', [])
+            r2_test = cv_results.get('test_r2', [])
+            rmse_train = -cv_results.get('train_rmse', [])
+            rmse_test = -cv_results.get('test_rmse', [])
             results['cv'] = {
-                'r2_cv_train_mean': float(np.mean(train_scores)),
-                'r2_cv_train_std': float(np.std(train_scores)),
-                'r2_cv_test_mean': float(np.mean(test_scores)),
-                'r2_cv_test_std': float(np.std(test_scores)),
+                'r2_cv_train_mean': float(np.mean(r2_train)),
+                'r2_cv_train_std': float(np.std(r2_train)),
+                'r2_cv_test_mean': float(np.mean(r2_test)),
+                'r2_cv_test_std': float(np.std(r2_test)),
+                'rmse_cv_train_mean': float(np.mean(rmse_train)),
+                'rmse_cv_train_std': float(np.std(rmse_train)),
+                'rmse_cv_test_mean': float(np.mean(rmse_test)),
+                'rmse_cv_test_std': float(np.std(rmse_test)),
             }
         except Exception:
             # If CV fails, continue without CV metrics
