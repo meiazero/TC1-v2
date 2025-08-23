@@ -8,6 +8,7 @@ from training.trainer import train_and_evaluate
 from training.evaluation import results_to_dataframe, select_best_model
 from utils.io import make_dir, save_dataframe, save_model
 from utils.logging import get_logger
+from plots.boxplot import plot_summary_boxplots
 import matplotlib.pyplot as plt
 import pandas as pd
 from plots.scatter import plot_actual_vs_predicted
@@ -96,8 +97,8 @@ def run_pipeline(
                 fig.supxlabel(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png"
-                ))
+                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png",
+                ), dpi=300)
                 plt.close(fig)
 
                 # Residuals histogram with normal overlay and param info
@@ -110,7 +111,7 @@ def run_pipeline(
                 fig.savefig(os.path.join(
                     model_plots_dir,
                     f"{idx}_{param_slug}_{split_name}_residuals_histogram.png"
-                ))
+                ), dpi=300)
                 plt.close(fig)
 
                 # QQ-Plot of residuals with param info
@@ -123,7 +124,7 @@ def run_pipeline(
                 fig.savefig(os.path.join(
                     model_plots_dir,
                     f"{idx}_{param_slug}_{split_name}_qqplot.png"
-                ))
+                ), dpi=300)
                 plt.close(fig)
             except Exception as e:
                 logger.warning(
@@ -179,57 +180,9 @@ def run_pipeline(
         logger.warning("Could not generate best configs markdown: %s", e)
     # Generate summary boxplots for test metrics across models
     try:
-        # summary directory
         summary_dir = os.path.join(plots_dir, 'summary')
         make_dir(summary_dir)
-        # select test metrics (numeric columns ending with _test)
-        test_metrics = [c for c in df_results.columns if c.endswith('_test')]
-        train_metrics = [c for c in df_results.columns if c.endswith('_train')]
-
-        metrics = {
-            "mae": "MAE",
-            "mape": "MAPE",
-            "mse": "MSE",
-            "medae": "MedAE",
-            "pearson": "Pearson",
-            "r2_test": "R2",
-            "res_mean": "Residual Mean",
-            "res_var": "Residual Variance",
-            "res_skew": "Residual Skewness",
-            "res_kurt": "Residual Kurtosis",
-            "rmse": "RMSE",
-            "spearman": "Spearman"
-        }
-
-        # for each metric, plot a boxplot grouping by model
-        for metric in test_metrics:
-            # prepare data per model
-            groups = []
-            labels = []
-
-            for model_name, grp in df_results.groupby('model'):
-                vals = grp[metric].dropna().tolist()
-                if vals:
-                    groups.append(vals)
-                    labels.append(model_name)
-            if not groups:
-                continue
-
-            # plot boxplot
-            fig, ax = plt.subplots(figsize=(max(6, len(labels)*1.5), 6))
-            ax.boxplot(groups, labels=labels, showmeans=True, showbox=True,
-                       medianprops=dict(color='green'), meanline=True,
-                       meanprops=dict(color='red'))
-
-            ax.set_title(f"Distribution of {metric.replace('_', ' ').title()} by Model")
-            ax.set_xlabel("Model")
-            ax.set_ylabel(metric.replace('_', ' ').title())
-
-            fig.tight_layout()
-            fname = metric + '_boxplot.png'
-            fig.savefig(os.path.join(summary_dir, fname))
-            plt.close(fig)
-
+        plot_summary_boxplots(df_results, summary_dir)
         logger.info("Saved summary boxplots to %s", summary_dir)
     except Exception as e:
         logger.warning("Could not generate summary boxplots: %s", e)
