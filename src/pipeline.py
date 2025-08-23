@@ -9,6 +9,7 @@ from training.evaluation import results_to_dataframe, select_best_model
 from utils.io import make_dir, save_dataframe, save_model
 from utils.logging import get_logger
 import matplotlib.pyplot as plt
+import pandas as pd
 from plots.scatter import plot_actual_vs_predicted
 from plots.residuals import plot_residuals
 from plots.diagnostics import plot_qq
@@ -92,7 +93,7 @@ def run_pipeline(
                     model_name=name,
                     split_name=split_name
                 )
-                fig.suptitle(f"Params: {param_str}", fontsize=8)
+                fig.supxlabel(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
                     f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png"
@@ -132,8 +133,106 @@ def run_pipeline(
 
     # Consolidate results
     df_results = results_to_dataframe(results)
+    # Save results table
     results_path = os.path.join(run_dir, "results.csv")
     save_dataframe(df_results, results_path)
+    # Generate markdown of best configuration per model
+    try:
+        best_per_model = df_results.loc[df_results.groupby('model')['r2_test'].idxmax()]
+        md_lines = ["# Best Configurations per Model", ""]
+        for idx_row, row in best_per_model.iterrows():
+            model_name = row['model']
+            params = row.get('params', {}) or {}
+            md_lines.append(f"## {model_name}")
+            md_lines.append("")
+            # Experiment index
+            md_lines.append(f"- **Experiment index**: {idx_row}")
+            # Test metric
+            r2_val = row.get('r2_test', None)
+            if r2_val is not None:
+                md_lines.append(f"- **Test R2**: {r2_val:.4f}")
+                md_lines.append(f"- **Test MAE**: {row.get('mae_test', None):.4f}")
+                md_lines.append(f"- **Test MAPE**: {row.get('mape_test', None):.4f}")
+                md_lines.append(f"- **Test Pearson**: {row.get('pearson_test', None):.4f}")
+
+            # Train metric
+            r2_val = row.get('r2_train', None)
+            if r2_val is not None:
+                md_lines.append(f"- **Train R²**: {r2_val:.4f}")
+                md_lines.append(f"- **Train MAE**: {row.get('mae_train', None):.4f}")
+                md_lines.append(f"- **Train MAPE**: {row.get('mape_train', None):.4f}")
+                md_lines.append(f"- **Train Pearson**: {row.get('pearson_train', None):.4f}")
+
+            # Other metrics (optional)
+            # Parameters block
+            md_lines.append(f"- **Parameters**:")
+            md_lines.append("```yaml")
+            for k, v in sorted(params.items()):
+                md_lines.append(f"{k}: {v}")
+            md_lines.append("```")
+            md_lines.append("")
+        md_path = os.path.join(run_dir, "best_model_configs.md")
+        with open(md_path, 'w') as md_file:
+            md_file.write("\n".join(md_lines))
+        logger.info("Saved best configs markdown to %s", md_path)
+    except Exception as e:
+        logger.warning("Could not generate best configs markdown: %s", e)
+    # Generate summary boxplots for test metrics across models
+    try:
+        # summary directory
+        summary_dir = os.path.join(plots_dir, 'summary')
+        make_dir(summary_dir)
+        # select test metrics (numeric columns ending with _test)
+        test_metrics = [c for c in df_results.columns if c.endswith('_test')]
+        train_metrics = [c for c in df_results.columns if c.endswith('_train')]
+
+        metrics = {
+            "mae": "MAE",
+            "mape": "MAPE",
+            "mse": "MSE",
+            "medae": "MedAE",
+            "pearson": "Pearson",
+            "r2_test": "R2",
+            "res_mean": "Residual Mean",
+            "res_var": "Residual Variance",
+            "res_skew": "Residual Skewness",
+            "res_kurt": "Residual Kurtosis",
+            "rmse": "RMSE",
+            "spearman": "Spearman"
+        }
+
+        # for each metric, plot a boxplot grouping by model
+        for metric in test_metrics:
+            # prepare data per model
+            groups = []
+            labels = []
+
+            for model_name, grp in df_results.groupby('model'):
+                vals = grp[metric].dropna().tolist()
+                if vals:
+                    groups.append(vals)
+                    labels.append(model_name)
+            if not groups:
+                continue
+
+            # plot boxplot
+            fig, ax = plt.subplots(figsize=(max(6, len(labels)*1.5), 6))
+            ax.boxplot(groups, labels=labels, showmeans=True, showbox=True,
+                       medianprops=dict(color='green'), meanline=True,
+                       meanprops=dict(color='red'))
+
+            ax.set_title(f"Distribution of {metric.replace('_', ' ').title()} by Model")
+            ax.set_xlabel("Model")
+            ax.set_ylabel(metric.replace('_', ' ').title())
+
+            fig.tight_layout()
+            fname = metric + '_boxplot.png'
+            fig.savefig(os.path.join(summary_dir, fname))
+            plt.close(fig)
+
+        logger.info("Saved summary boxplots to %s", summary_dir)
+    except Exception as e:
+        logger.warning("Could not generate summary boxplots: %s", e)
 
     # Select and save best model
     best = select_best_model(df_results, metric="r2_test")
