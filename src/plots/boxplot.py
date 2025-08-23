@@ -95,7 +95,7 @@ def plot_summary_boxplots(df, output_dir, metrics=None, model_col='model'):
         # adjust layout to fit annotation
         fig.tight_layout(rect=[0.0, 0.03, 1.0, 0.95])
         # save
-        fname = f"{metric}_boxplot.pdf"
+        fname = f"{metric}_boxplot.png"
         path = os.path.join(output_dir, fname)
         fig.savefig(path, dpi=300)
         plt.close(fig)

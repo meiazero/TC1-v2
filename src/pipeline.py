@@ -108,7 +108,7 @@ def run_pipeline(
                 fig.supxlabel(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.pdf",
+                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png",
                 ), dpi=300)
                 plt.close(fig)
 
@@ -121,7 +121,7 @@ def run_pipeline(
                 fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_residuals_histogram.pdf"
+                    f"{idx}_{param_slug}_{split_name}_residuals_histogram.png"
                 ), dpi=300)
                 plt.close(fig)
 
@@ -134,7 +134,7 @@ def run_pipeline(
                 fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_qqplot.pdf"
+                    f"{idx}_{param_slug}_{split_name}_qqplot.png"
                 ), dpi=300)
                 plt.close(fig)
             except Exception as e:
@@ -143,11 +143,44 @@ def run_pipeline(
                     split_name, name, e
                 )
 
-    # Consolidate results
+    # Consolidate results and sort by test R2 descending
     df_results = results_to_dataframe(results)
-    # Save results table
+    df_results = df_results.sort_values(by='r2_test', ascending=False).reset_index(drop=True)
+
+    # Save full results table
     results_path = os.path.join(run_dir, "results.csv")
     save_dataframe(df_results, results_path)
+    logger.info("Saved full results to %s", results_path)
+    # Save model ranking by best test R2 and generate ranking plot
+    try:
+        model_rank = (
+            df_results.groupby('model')['r2_test']
+            .max()
+            .reset_index()
+            .sort_values(by='r2_test', ascending=False)
+            .reset_index(drop=True)
+        )
+        rank_csv = os.path.join(run_dir, 'model_ranking.csv')
+        save_dataframe(model_rank, rank_csv)
+        logger.info("Saved model ranking to %s", rank_csv)
+
+        # Bar plot for model ranking
+        fig, ax = plt.subplots(figsize=(max(6, len(model_rank) * 1.5), 6))
+        ax.bar(model_rank['model'], model_rank['r2_test'], color='skyblue')
+        ax.set_xlabel('Model')
+        ax.set_ylabel('Best Test R2')
+        ax.set_title('Model Ranking by Best Test R2')
+        plt.xticks(rotation=45, ha='right')
+
+        fig.tight_layout()
+        plot_path = os.path.join(plots_dir, 'model_ranking_by_r2_test.png')
+        fig.savefig(plot_path, dpi=300)
+        plt.close(fig)
+
+        logger.info("Saved model ranking plot to %s", plot_path)
+    except Exception as e:
+        logger.warning("Could not generate model ranking CSV/plot: %s", e)
+
     # Generate markdown of best configuration per model
     try:
         best_per_model = df_results.loc[df_results.groupby('model')['r2_test'].idxmax()]

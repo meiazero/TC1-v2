@@ -25,7 +25,10 @@ def results_to_dataframe(results_list):
                 if k in ["y_true", "y_pred", "residuals"]:
                     continue  # não salvar vetores no DF
                 row[f"{k}_{split}"] = v
-
+        # Flatten cross-validation summary metrics if available
+        for cv_key, cv_val in res.get('cv', {}).items():
+            # include CV mean and std metrics
+            row[cv_key] = cv_val
         rows.append(row)
 
     return pd.DataFrame(rows)

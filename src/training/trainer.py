@@ -7,6 +7,7 @@ from sklearn.metrics import (
     mean_absolute_percentage_error
 )
 from scipy.stats import pearsonr, spearmanr, skew, kurtosis
+from sklearn.model_selection import cross_validate
 
 
 def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
@@ -18,6 +19,24 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
     }
 
     try:
+        # --- Cross-validation for R2 scores ---
+        try:
+            # Evaluate cross-validated R2 on training data
+            cv_results = cross_validate(
+                model, X_train, y_train,
+                cv=5, return_train_score=True, scoring='r2'
+            )
+            train_scores = cv_results.get('train_score', [])
+            test_scores = cv_results.get('test_score', [])
+            results['cv'] = {
+                'r2_cv_train_mean': float(np.mean(train_scores)),
+                'r2_cv_train_std': float(np.std(train_scores)),
+                'r2_cv_test_mean': float(np.mean(test_scores)),
+                'r2_cv_test_std': float(np.std(test_scores)),
+            }
+        except Exception:
+            # If CV fails, continue without CV metrics
+            results['cv'] = {}
         # --- Treinamento ---
         model.fit(X_train, y_train)
 
