@@ -108,7 +108,7 @@ def run_pipeline(
                 fig.supxlabel(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.png",
+                    f"{idx}_{param_slug}_{split_name}_actual_vs_predicted.pdf",
                 ), dpi=300)
                 plt.close(fig)
 
@@ -121,7 +121,7 @@ def run_pipeline(
                 fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_residuals_histogram.png"
+                    f"{idx}_{param_slug}_{split_name}_residuals_histogram.pdf"
                 ), dpi=300)
                 plt.close(fig)
 
@@ -134,7 +134,7 @@ def run_pipeline(
                 fig.suptitle(f"Params: {param_str}", fontsize=8)
                 fig.savefig(os.path.join(
                     model_plots_dir,
-                    f"{idx}_{param_slug}_{split_name}_qqplot.png"
+                    f"{idx}_{param_slug}_{split_name}_qqplot.pdf"
                 ), dpi=300)
                 plt.close(fig)
             except Exception as e:
@@ -198,8 +198,8 @@ def run_pipeline(
     except Exception as e:
         logger.warning("Could not generate summary boxplots: %s", e)
 
-    # Select and save best model
-    best = select_best_model(df_results, metric="r2_test")
+    # Select and save best model using múltiplas métricas compostas
+    best = select_best_model(df_results)
     if bool(best):
         logger.info("Best model: %s", best)
         # Find corresponding model instance
