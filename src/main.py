@@ -19,8 +19,9 @@ def main():
         "--random-state", type=int, default=42, help="Random seed"
     )
     parser.add_argument(
-        "--remove-outliers", default=True, help="Remove outliers from training data"
+        "--remove-outliers", action="store_true", default=False, help="Remove outliers from data before processing"
     )
+
     args = parser.parse_args()
     run_pipeline(
         config_path=args.config,
