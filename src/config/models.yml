@@ -39,7 +39,16 @@ models:
   - name: MLPRegressor
     mode: grid
     params:
-      hidden_layer_sizes: [[32], [64, 32]]
+      hidden_layer_sizes: [[32]]
+      activation: [relu, tanh]
+      solver: [adam, sgd]
+      learning_rate_init: [0.001, 0.01]
+      max_iter: [5000]
+
+  - name: MLPRegressor
+    mode: grid
+    params:
+      hidden_layer_sizes: [[64, 32]]
       activation: [relu, tanh]
       solver: [adam, sgd]
       learning_rate_init: [0.001, 0.01]
