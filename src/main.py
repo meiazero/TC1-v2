@@ -13,10 +13,13 @@ def main():
         "--output", default="experiments", help="Directory to store experiment outputs"
     )
     parser.add_argument(
-        "--test-size", type=float, default=0.2, help="Proportion of data for testing"
+        "--test-size", type=float, default=1/3, help="Proportion of data for testing"
     )
     parser.add_argument(
         "--random-state", type=int, default=42, help="Random seed"
+    )
+    parser.add_argument(
+        "--remove-outliers", default=True, help="Remove outliers from training data"
     )
     args = parser.parse_args()
     run_pipeline(
@@ -24,7 +27,8 @@ def main():
         data_path=args.data,
         output_dir=args.output,
         test_size=args.test_size,
-        random_state=args.random_state
+        random_state=args.random_state,
+        remove_outliers=args.remove_outliers
     )
 
 if __name__ == "__main__":
