@@ -31,7 +31,7 @@ def plot_actual_vs_predicted(y_true, y_pred, model_name=None, split_name=None, a
             fontsize=10, verticalalignment='top', bbox=dict(boxstyle="round", fc="w", alpha=0.8))
 
     # formatting
-    ax.legend(loc="upper right")
+    ax.legend(loc="lower right")
 
     # labels
     ax.set_xlim(min_val, max_val)
