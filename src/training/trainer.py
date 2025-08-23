@@ -9,6 +9,13 @@ from sklearn.metrics import (
 from scipy.stats import pearsonr, spearmanr, skew, kurtosis
 from sklearn.model_selection import cross_validate, RepeatedKFold
 
+# Optional import for XGBoost early stopping support
+try:
+    from xgboost import XGBRegressor
+    _HAS_XGB = True
+except ImportError:
+    _HAS_XGB = False
+
 
 def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
     results = {
@@ -27,6 +34,7 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
                 model, X_train, y_train,
                 cv=rkf, scoring=scoring, return_train_score=True
             )
+
             # Extract and invert negative RMSE scores
             r2_train = cv_results.get('train_r2', [])
             r2_test = cv_results.get('test_r2', [])
@@ -45,8 +53,28 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
         except Exception:
             # If CV fails, continue without CV metrics
             results['cv'] = {}
+
         # --- Treinamento ---
-        model.fit(X_train, y_train)
+        # Support XGBoost early stopping if applicable
+        if _HAS_XGB and isinstance(model, XGBRegressor):
+            # retrieve early stopping rounds if set
+            es_rounds = getattr(model, 'early_stopping_rounds', None)
+            # fit with evaluation set for early stopping
+            try:
+                if es_rounds is not None:
+                    model.fit(
+                        X_train, y_train,
+                        eval_set=[(X_test, y_test)],
+                        early_stopping_rounds=es_rounds,
+                        verbose=False
+                    )
+                else:
+                    model.fit(X_train, y_train)
+            except TypeError:
+                # fallback if model.fit does not accept these kwargs
+                model.fit(X_train, y_train)
+        else:
+            model.fit(X_train, y_train)
 
         # --- Predições ---
         y_pred_train = model.predict(X_train)
