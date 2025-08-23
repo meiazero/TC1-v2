@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "real-estate-valuation"
+version = "0.1.0"
+description = "ML pipeline for regression on the Real Estate Valuation Dataset"
+authors = ["Emanuel Avila <avilaemanueel@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+packages = [
+  { include = "config", from = "src" },
+  { include = "data", from = "src" },
+  { include = "models", from = "src" },
+  { include = "plots", from = "src" },
+  { include = "training", from = "src" },
+  { include = "utils", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.3.2"
+scikit-learn = "^1.7.1"
+scipy = "^1.16.1"
+matplotlib = "^3.10.5"
+pyyaml = "^6.0.2"
+xgboost = "^3.0.4"
+
+[tool.poetry.extras]
+extra_xgboost = ["xgboost"]
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+isort = "^6.0.1"
+flake8 = "^7.3.0"
+flake8-docstrings = "^1.7.0"
+mypy = "^1.17.1"
+pytest = "^8.4.1"
+
+[tool.poetry.scripts]
+real-estate-pipeline = "main:main"
+
+[build-system]
+requires = ["poetry-core>=1.5.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503", "D100", "D101", "D102"]
