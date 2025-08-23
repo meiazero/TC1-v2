@@ -3,7 +3,7 @@ from datetime import datetime
 
 from config.parser import load_model_configs
 from data.loader import load_raw_data, clean_data
-from data.preprocess import preprocess
+from data.preprocess import preprocess, split_data
 from training.trainer import train_and_evaluate
 from training.evaluation import results_to_dataframe, select_best_model
 from utils.io import make_dir, save_dataframe, save_model
@@ -12,6 +12,7 @@ from plots.boxplot import plot_summary_boxplots
 import matplotlib.pyplot as plt
 import pandas as pd
 from plots.scatter import plot_actual_vs_predicted
+from utils.statistics import significance_test
 from plots.residuals import plot_residuals
 from plots.diagnostics import plot_qq
 
@@ -54,6 +55,10 @@ def run_pipeline(
     # Preprocess data
     logger.info("Preprocessing data")
     X_train, X_test, y_train, y_test, scaler = preprocess(
+        df, target_col="price", test_size=test_size, random_state=random_state
+    )
+    # Retain original train/test splits for significance testing
+    X_train_df, X_test_df, y_train_series, y_test_series = split_data(
         df, target_col="price", test_size=test_size, random_state=random_state
     )
     # Save scaler
@@ -201,6 +206,16 @@ def run_pipeline(
         if best_model:
             best_model_path = os.path.join(run_dir, "best_model.pkl")
             save_model(best_model, best_model_path)
+            # Compute variable significance for linear models
+            try:
+                if hasattr(best_model, "coef_"):
+                    feat_names = X_train_df.columns.tolist()
+                    df_signif = significance_test(best_model, X_train, y_train, feat_names)
+                    signif_path = os.path.join(run_dir, "variable_significance.csv")
+                    save_dataframe(df_signif, signif_path)
+                    logger.info("Saved variable significance to %s", signif_path)
+            except Exception as e:
+                logger.warning("Could not compute variable significance: %s", e)
 
     logger.info("Pipeline finished. Outputs are in %s", run_dir)
 
