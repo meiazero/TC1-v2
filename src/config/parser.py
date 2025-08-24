@@ -4,12 +4,22 @@ except ImportError:
     yaml = None
 import itertools
 
-from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, Lasso, SGDRegressor
+from sklearn.ensemble import (
+    AdaBoostRegressor,
+    GradientBoostingRegressor,
+    RandomForestRegressor,
+)
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.linear_model import (
+    Lasso,
+    LinearRegression,
+    LogisticRegression,
+    Ridge,
+    SGDRegressor,
+)
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR, LinearSVR
-from sklearn.kernel_ridge import KernelRidge
 from sklearn.tree import DecisionTreeRegressor, ExtraTreeRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
 
 try:
     from xgboost import XGBRegressor

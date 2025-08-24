@@ -1,4 +1,5 @@
-from config.parser import load_model_configs, MODEL_REGISTRY
+from config.parser import MODEL_REGISTRY, load_model_configs
+
 
 def load_experiments(config_path: str):
     """Load model configurations and instantiate experiments."""

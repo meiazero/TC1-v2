@@ -1,6 +1,7 @@
 import os
 import pickle
 
+
 def make_dir(path):
     """Create a directory if it does not exist."""
     os.makedirs(path, exist_ok=True)

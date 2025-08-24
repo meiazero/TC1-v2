@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def results_to_dataframe(results_list):
     """
     Converte lista de resultados do trainer em DataFrame.

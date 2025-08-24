@@ -1,12 +1,13 @@
 import numpy as np
+from scipy.stats import kurtosis, pearsonr, skew, spearmanr
 from sklearn.metrics import (
-    r2_score,
-    mean_squared_error,
     mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
     median_absolute_error,
-    mean_absolute_percentage_error
+    r2_score,
 )
-from scipy.stats import pearsonr, spearmanr, skew, kurtosis
+
 
 def r2(y_true, y_pred):
     """Coefficient of determination"""

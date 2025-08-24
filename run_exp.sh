@@ -1,8 +1,7 @@
 #!/bin/bash
 
-rm -rf experiments-raw
-rm -rf experiments-curated
+rm -rf experiments-raw-v2
 
-python src/main.py --config src/config/models.yml --data data/raw/real-estate-valuation-dataset.csv --output experiments-raw --random-state 45
+python src/main.py --config src/config/models.yml --data data/raw/real-estate-valuation-dataset.csv --output experiments-raw-v2 --random-state 45
 
-python src/main.py --config src/config/models.yml --data data/raw/real-estate-valuation-dataset.csv --output experiments-curated --random-state 45 --remove-outliers
+# python src/main.py --config src/config/models.yml --data data/raw/real-estate-valuation-dataset.csv --output experiments-curated-v2 --random-state 45 --remove-outliers

@@ -1,5 +1,6 @@
-from sklearn.svm import SVR, LinearSVC
 from sklearn.kernel_ridge import KernelRidge
+from sklearn.svm import SVR, LinearSVC
+
 
 def get_svr_model(**params):
     """Instantiate an SVR model."""

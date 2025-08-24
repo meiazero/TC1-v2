@@ -3,105 +3,175 @@ models:
     mode: fixed
     params: {}
 
+  # - name: LogisticRegression
+  #   mode: grid
+  #   params:
+  #     C: [0.01, 0.1, 1.0, 10.0]
+  #     penalty: [l2]
+  #     solver: [lbfgs]
+  #     max_iter: [100, 500]
+
   - name: Ridge
     mode: grid
     params:
-      alpha: [0.1, 1.0, 10.0]
+      alpha: [0.01, 0.1, 1.0, 10.0]
 
   - name: Lasso
     mode: grid
     params:
-      alpha: [0.001, 0.01, 0.1, 1.0]
-
-  - name: ElasticNet
-    mode: sequential
-    configs:
-      - alpha: 0.1
-        l1_ratio: 0.5
-
-      - alpha: 1.0
-        l1_ratio: 0.7
+      alpha: [0.0001, 0.001, 0.01, 0.1, 1.0]
 
   - name: SGDRegressor
+    mode: grid
+    params:
+      loss: [squared_error]
+      penalty: [l2]
+      alpha: [0.0001, 0.001, 0.01]
+      l1_ratio: [0.15, 0.5, 0.85]
+      max_iter: [1000, 2000]
+
+  - name: MLPRegressor
     mode: sequential
     configs:
-      - loss: squared_error
-        penalty: l2
-        alpha: 0.0001
-        max_iter: 2000
+      # Single hidden layer
+      - hidden_layer_sizes: [16]
+        activation: relu
+        solver: adam
+        learning_rate_init: 0.003
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
 
-      - loss: squared_error
-        penalty: elasticnet
-        alpha: 0.001
-        l1_ratio: 0.15
-        max_iter: 2000
+      - hidden_layer_sizes: [16]
+        activation: tanh
+        solver: adam
+        learning_rate_init: 0.003
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
 
-  - name: MLPRegressor
-    mode: grid
-    params:
-      hidden_layer_sizes: [[32]]
-      activation: [relu, tanh]
-      solver: [adam, sgd]
-      learning_rate_init: [0.001, 0.01]
-      max_iter: [5000]
+      - hidden_layer_sizes: [16]
+        activation: tanh
+        solver: sgd
+        learning_rate_init: 0.003
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
 
-  - name: MLPRegressor
-    mode: grid
-    params:
-      hidden_layer_sizes: [[64, 32]]
-      activation: [relu, tanh]
-      solver: [adam, sgd]
-      learning_rate_init: [0.001, 0.01]
-      max_iter: [5000]
+      - hidden_layer_sizes: [16]
+        activation: relu
+        solver: sgd
+        learning_rate_init: 0.003
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
+
+      # Two hidden layers
+      - hidden_layer_sizes: [16, 8]
+        activation: relu
+        solver: adam
+        learning_rate_init: 0.001
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
+
+      - hidden_layer_sizes: [16, 8]
+        activation: tanh
+        solver: adam
+        learning_rate_init: 0.001
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
+
+      - hidden_layer_sizes: [16, 8]
+        activation: relu
+        solver: sgd
+        learning_rate_init: 0.001
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
+
+      - hidden_layer_sizes: [32, 16]
+        activation: tanh
+        solver: sgd
+        learning_rate_init: 0.001
+        max_iter: 5000
+        early_stopping: true
+        validation_fraction: 0.1
 
   - name: SVR
     mode: grid
     params:
       kernel: [linear, rbf]
-      C: [1.0, 10.0, 100.0]
-      epsilon: [0.1, 0.3]
+      C: [0.1, 1.0, 10.0, 100.0]
+      epsilon: [0.01, 0.1, 0.3, 0.5]
+      gamma: ['scale', 'auto']
 
   - name: KernelRidge
     mode: sequential
     configs:
       - kernel: rbf
         alpha: 1.0
-        gamma: 0.1
+        gamma: 0.01
 
       - kernel: polynomial
-        alpha: 0.1
-        degree: 3
+        alpha: 1.0
+        degree: 2
 
   - name: DecisionTreeRegressor
     mode: grid
     params:
-      max_depth: [3, 5, 10]
-      min_samples_split: [2, 5]
+      max_depth: [3, 5, 7]
+      min_samples_split: [5, 10, 20]
+      min_samples_leaf: [2, 5, 10]
+
+  - name: ExtraTreeRegressor
+    mode: grid
+    params:
+      max_depth: [3, 5, 7]
+      min_samples_split: [2, 5, 10]
+      min_samples_leaf: [1, 2, 4]
+
+  - name: AdaBoostRegressor
+    mode: sequential
+    configs:
+      - n_estimators: 100
+        learning_rate: 0.05
+
+      - n_estimators: 150
+        learning_rate: 0.01
 
   - name: RandomForestRegressor
     mode: grid
     params:
-      n_estimators: [100, 200, 300]
-      max_depth: [10, 20, 30]
+      n_estimators: [100, 200]
+      max_depth: [10, 20]
+      min_samples_split: [2, 5, 10]
+      min_samples_leaf: [2, 4]
+      max_features: [1.0, "sqrt", "log2"]
 
   - name: GradientBoostingRegressor
-    mode: sequential
-    configs:
-      - n_estimators: 100
-        learning_rate: 0.1
-        max_depth: 3
-
-      - n_estimators: 200
-        learning_rate: 0.05
-        max_depth: 5
+    mode: grid
+    params:
+      n_estimators: [100, 200, 300]
+      learning_rate: [0.01, 0.05, 0.1, 0.2]
+      max_depth: [3, 4, 5, 6]
+      subsample: [0.7, 0.8, 0.9, 1.0]
+      min_samples_split: [2, 5, 10]
+      min_samples_leaf: [1, 2, 4]
+      max_features: [1.0, "sqrt", "log2"]
 
   - name: XGBRegressor
     mode: sequential
     configs:
-      - n_estimators: 200
-        learning_rate: 0.1
-        max_depth: 3
-
-      - n_estimators: 500
+      - n_estimators: 100
         learning_rate: 0.05
-        max_depth: 5
+        max_depth: 3
+        subsample: 0.8
+        colsample_bytree: 0.8
+
+      - n_estimators: 200
+        learning_rate: 0.01
+        max_depth: 4
+        subsample: 0.8
+        colsample_bytree: 0.8

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
+
 def plot_qq(residuals, model_name=None, split_name=None, ax=None, figsize=(6, 6)):
     """Create a QQ-plot of residuals against a normal distribution."""
     if ax is None:

@@ -1,4 +1,5 @@
-from sklearn.neural_network import MLPRegressor, MLPClassifier
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+
 
 def get_mlp_model(**params):
     """Instantiate an MLPRegressor model."""

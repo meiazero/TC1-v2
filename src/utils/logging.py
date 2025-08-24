@@ -1,5 +1,6 @@
 import logging
 
+
 def get_logger(name):
     """Get a logger with standardized formatting."""
     logger = logging.getLogger(name)

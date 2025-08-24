@@ -1,5 +1,7 @@
 import argparse
+
 from pipeline import run_pipeline
+
 
 def main():
     parser = argparse.ArgumentParser(description="Run ML pipeline for real estate valuation")

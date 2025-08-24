@@ -1,7 +1,8 @@
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import numpy as np
+
 
 def split_data(df: pd.DataFrame, target_col: str = "price", test_size: float = 0.2, random_state: int = 42):
     """

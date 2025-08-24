@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import r2_score
 
+
 def plot_actual_vs_predicted(y_true, y_pred, model_name=None, split_name=None, ax=None, figsize=(8, 6)):
     """Plot Actual vs Predicted scatter with perfect-fit line, trend line and R2 score."""
     if ax is None:

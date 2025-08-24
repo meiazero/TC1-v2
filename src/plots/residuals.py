@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import norm, gaussian_kde
+from scipy.stats import gaussian_kde, norm
+
 
 def plot_residuals(y_true, y_pred, model_name=None, split_name=None, ax=None, figsize=(8, 6)):
     """Plot histogram of residuals with normal distribution overlay."""

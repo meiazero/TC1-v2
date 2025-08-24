@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def load_raw_data(path: str) -> pd.DataFrame:
     """
     Load raw data from a CSV file.

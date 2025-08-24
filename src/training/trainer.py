@@ -1,18 +1,20 @@
-import numpy as np
-from sklearn.metrics import (
-    r2_score,
-    mean_squared_error,
-    mean_absolute_error,
-    median_absolute_error,
-    mean_absolute_percentage_error
-)
 import warnings
-from scipy.stats import pearsonr, spearmanr, skew, kurtosis
+
+import numpy as np
+from scipy.stats import kurtosis, pearsonr, skew, spearmanr
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    median_absolute_error,
+    r2_score,
+)
+
 try:
     from scipy.stats import ConstantInputWarning
 except ImportError:
     ConstantInputWarning = Warning
-from sklearn.model_selection import cross_validate, RepeatedKFold
+from sklearn.model_selection import RepeatedKFold, cross_validate
 
 # Optional import for XGBoost early stopping support
 try:

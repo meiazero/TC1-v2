@@ -1,7 +1,8 @@
 import os
+
+import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.lines as mlines
 
 # pretty name mapping for base metrics
 _PRETTY_NAMES = {
