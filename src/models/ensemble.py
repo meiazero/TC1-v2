@@ -1,5 +1,5 @@
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor, VotingRegressor
 
 try:
     from xgboost import XGBRegressor
@@ -23,3 +23,7 @@ if HAS_XGB:
     def get_xgb_model(**params):
         """Instantiate an XGBoost Regressor."""
         return XGBRegressor(**params)
+
+def get_adaboost_model(**params):
+    """Instantiate an AdaBoost Regressor."""
+    return AdaBoostRegressor(**params)

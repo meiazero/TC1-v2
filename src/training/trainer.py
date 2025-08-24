@@ -31,13 +31,21 @@ def train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test):
     }
 
     try:
-        # --- Repeated K-Fold cross-validation for R2 and RMSE ---
+        # --- Optimize: set model n_jobs if supported ---
         try:
-            rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+            mparams = model.get_params()
+            if 'n_jobs' in mparams and mparams.get('n_jobs') is None:
+                model.set_params(n_jobs=-1)
+        except Exception:
+            pass
+        # --- Repeated K-Fold cross-validation for R2 and RMSE (parallelized) ---
+        try:
+            rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=50)
             scoring = {'r2': 'r2', 'rmse': 'neg_root_mean_squared_error'}
             cv_results = cross_validate(
                 model, X_train, y_train,
-                cv=rkf, scoring=scoring, return_train_score=True
+                cv=rkf, scoring=scoring, return_train_score=True,
+                n_jobs=-1
             )
 
             # Extract and invert negative RMSE scores

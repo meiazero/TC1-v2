@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
 
+# Train, evaluate and plot best run per model config in parallel
+from joblib import Parallel, delayed
+
 from config.parser import load_model_configs
 from data.loader import load_raw_data, clean_data
 from data.preprocess import preprocess, split_data, remove_outliers as remove_outliers_fn
@@ -12,6 +15,7 @@ from plots.boxplot import plot_summary_boxplots
 import matplotlib.pyplot as plt
 from plots.scatter import plot_actual_vs_predicted
 from utils.statistics import significance_test
+import numpy as np
 from plots.residuals import plot_residuals
 from plots.learning_curve import plot_learning_curve
 
@@ -75,84 +79,75 @@ def run_pipeline(
     logger.info("Loading model configurations from %s", config_path)
     experiments = load_model_configs(config_path)
 
-    # Train, evaluate (with repeats) and plot only the best run per model
-    results = []
-    for idx, exp in enumerate(experiments):
+    def _run_and_plot(idx, exp, X_train, y_train, X_test, y_test, epochs, plots_dir):
         name = exp["name"]
         params = exp["params"]
         model = exp["model"]
+        # For classification models (LogisticRegression), binarize continuous target into two classes
+        if name == "LogisticRegression":
+            # threshold at median to split into binary classes
+            thresh = np.median(y_train)
+            y_train_mod = (y_train > thresh).astype(int)
+            y_test_mod = (y_test > thresh).astype(int)
+        else:
+            y_train_mod = y_train
+            y_test_mod = y_test
         logger.info("Training model %s with params %s", name, params)
         best_res = None
-
-        # Repeat training to select best run
         for epoch in range(epochs):
             logger.info("Run %d/%d for %s", epoch + 1, epochs, name)
-            res = train_and_evaluate(model, name, params, X_train, y_train, X_test, y_test)
+            # use modified target for classification if applicable
+            res = train_and_evaluate(model, name, params,
+                                     X_train, y_train_mod,
+                                     X_test, y_test_mod)
             if "error" in res:
                 logger.warning("Error during %s run %d: %s", name, epoch + 1, res.get("error"))
                 continue
-            if best_res is None or res.get("test", {}).get("r2", float("-inf")) > best_res.get("test", {}).get("r2", float("-inf")):
+            if best_res is None or res["test"].get("r2", float("-inf")) > best_res["test"].get("r2", float("-inf")):
                 best_res = res
         if best_res is None:
             logger.warning("All runs failed for %s, skipping", name)
-            continue
+            return None
 
-        # Append only the best result for this model config
-        results.append(best_res)
-        res = best_res
-        # Plot diagnostics per split (train and test) for this best run
-        param_slug = _slugify_params(params)
-        param_str = ", ".join([f"{k}={v}" for k, v in sorted(params.items())]) if params else "default"
+        # Plot diagnostics per split (train and test) for the best run
+        param_str = ", ".join(f"{k}={v}" for k, v in sorted(params.items())) if params else "default"
         model_plots_dir = os.path.join(plots_dir, name)
         make_dir(model_plots_dir)
-        for split in ('train', 'test'):
-            data_split = res.get(split, {})
-            y_true = data_split.get('y_true')
-            y_pred = data_split.get('y_pred')
+        for split in ("train", "test"):
+            data_split = best_res.get(split, {})
+            y_true = data_split.get("y_true")
+            y_pred = data_split.get("y_pred")
             if y_true is None or y_pred is None:
                 continue
-            # Actual vs Predicted
             try:
-                fig, ax = plot_actual_vs_predicted(
-                    y_true, y_pred, model_name=name, split_name=split
-                )
+                fig, ax = plot_actual_vs_predicted(y_true, y_pred, model_name=name, split_name=split)
+                fig.savefig(os.path.join(model_plots_dir, f"{idx}_{split}_actual_vs_predicted.png"), dpi=300)
                 fig.supxlabel(f"Params: {param_str}", fontsize=8)
-                fig.savefig(
-                    os.path.join(model_plots_dir, f"{idx}_{param_slug}_{split}_actual_vs_predicted.png"), dpi=300
-                )
                 plt.close(fig)
             except Exception as e:
-                logger.warning(
-                    "Could not plot actual_vs_predicted for %s (params %s, split %s): %s",
-                    name, param_str, split, e
-                )
-            # Residuals histogram
+                logger.warning("Error plotting actual_vs_predicted for %s (%s, %s): %s", name, param_str, split, e)
             try:
-                fig, ax = plot_residuals(
-                    y_true, y_pred, model_name=name, split_name=split
-                )
+                fig, ax = plot_residuals(y_true, y_pred, model_name=name, split_name=split)
+                fig.savefig(os.path.join(model_plots_dir, f"{idx}_{split}_residuals_histogram.png"), dpi=300)
                 fig.supxlabel(f"Params: {param_str}", fontsize=8)
-                fig.savefig(
-                    os.path.join(model_plots_dir, f"{idx}_{param_slug}_{split}_residuals_histogram.png"), dpi=300
-                )
                 plt.close(fig)
             except Exception as e:
-                logger.warning(
-                    "Could not plot residuals for %s (params %s, split %s): %s",
-                    name, param_str, split, e
-                )
-        # Plot learning curve for this configuration
+                logger.warning("Error plotting residuals for %s (%s, %s): %s", name, param_str, split, e)
+        # Plot learning curve (train only)
         try:
-            fig = plot_learning_curve(
-                model, X_train, y_train, title=f"{name} Learning Curve", cv=5, n_jobs=-1
-            )
+            fig = plot_learning_curve(model, X_train, y_train, title=f"{name} Learning Curve", cv=5, n_jobs=-1)
+            fig.savefig(os.path.join(model_plots_dir, f"{idx}_learning_curve.png"), dpi=300)
             fig.supxlabel(f"Params: {param_str}", fontsize=8)
-            fig.savefig(
-                os.path.join(model_plots_dir, f"{idx}_{param_slug}_learning_curve.png"), dpi=300
-            )
             plt.close(fig)
         except Exception as e:
-            logger.warning("Could not plot learning curve for %s (params %s): %s", name, param_str, e)
+            logger.warning("Error plotting learning curve for %s (%s): %s", name, param_str, e)
+        return best_res
+
+    parallel_results = Parallel(n_jobs=-1, backend="loky")(
+        delayed(_run_and_plot)(idx, exp, X_train, y_train, X_test, y_test, epochs, plots_dir)
+        for idx, exp in enumerate(experiments)
+    )
+    results = [r for r in parallel_results if r is not None]
 
     # Consolidate results and sort by test R2 descending
     df_results = results_to_dataframe(results)
@@ -169,13 +164,7 @@ def run_pipeline(
         # Extract key metrics and residual variance (errors variability)
         model_rank = best_configs[[
             'model', 'r2_train', 'r2_test', 'rmse_train', 'rmse_test',
-            'res_var_train', 'res_var_test'
         ]]
-        # Rename residual variance columns
-        model_rank = model_rank.rename(columns={
-            'res_var_train': 'variance_train',
-            'res_var_test': 'variance_test'
-        })
         # Sort by test R2 descending
         model_rank = model_rank.sort_values(by='r2_test', ascending=False).reset_index(drop=True)
         # Save CSV

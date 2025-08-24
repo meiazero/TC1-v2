@@ -1,7 +1,8 @@
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, SGDRegressor
+from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, Lasso, ElasticNet, SGDRegressor
 
 LINEAR_MODELS = {
     "LinearRegression": LinearRegression,
+    "LogisticRegression": LogisticRegression,
     "Ridge": Ridge,
     "Lasso": Lasso,
     "ElasticNet": ElasticNet,
